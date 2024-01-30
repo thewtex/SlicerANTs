@@ -83,14 +83,15 @@ class ITKANTsCommonLogic(ScriptedLoadableModuleLogic):
     def getITKImageFromVolumeNode(self, volumeNode):
         return slicer.util.itkImageFromVolume(volumeNode)
 
-    def setITKImageToVolumeNode(self, itkImage, outputVolumeNode):
+    def setITKImageToVolumeNode(self, itkImage, outputVolumeNode, showResult=True):
         slicer.util.updateVolumeFromITKImage(outputVolumeNode, itkImage)
 
-        slicer.util.setSliceViewerLayers(
-            background=outputVolumeNode,
-            fit=True,
-            rotateToVolumePlane=True,
-            )
+        if showResult:
+            slicer.util.setSliceViewerLayers(
+                background=outputVolumeNode,
+                fit=True,
+                rotateToVolumePlane=True,
+                )
 
 
 def preloadITK():
