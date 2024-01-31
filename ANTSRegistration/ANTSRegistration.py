@@ -257,7 +257,7 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
         ants_reg.SetFixedImage(fixedImage)
         movingImage = self.getITKImageFromVolumeNode(movingVolume)
         ants_reg.SetMovingImage(fixedImage)
-        # ants_reg.SetSamplingRate(samplingRate)
+        ants_reg.SetSamplingRate(samplingRate)
 
         logging.info('Processing started')
         startTime = time.time()
@@ -265,6 +265,9 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
         outTransform = ants_reg.GetForwardTransform()
         print(outTransform)
         # TODO: set this to the output transform node
+        # slicer.util.updateTransformMatrixFromArray
+        # vtkITKTransformConverter.CreateVTKTransformFromITK()
+        # slicer.util.updateTransformFromITKTransform(outTransform, forwardTransform)
         stopTime = time.time()
 
         stopTime = time.time()
