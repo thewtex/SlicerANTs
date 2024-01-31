@@ -18,7 +18,13 @@ from slicer.parameterNodeWrapper import (
 )
 from ITKANTsCommon import ITKANTsCommonLogic
 
-from slicer import vtkMRMLScalarVolumeNode
+from slicer import (
+    vtkMRMLScalarVolumeNode,
+    vtkMRMLTransformNode,
+    vtkMRMLLinearTransformNode,
+    vtkMRMLBSplineTransformNode,
+    vtkMRMLGridTransformNode,
+)
 
 class ANTSRegistration(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
@@ -70,18 +76,16 @@ class ANTSRegistrationParameterNode:
     """
     The parameters needed by module.
 
-    inputVolume - The volume to threshold.
-    imageThreshold - The value at which to threshold the input volume.
-    invertThreshold - If true, will invert the threshold.
-    thresholdedVolume - The output volume that will contain the thresholded volume.
-    invertedVolume - The output volume that will contain the inverted thresholded volume.
+    fixedVolume - The fixed image.
+    movingVolume - The moving image.
+    samplingRate - Percentage of pixels to use to evaluate the metric.
+    forwardTransform - The output transform (which can be used to resample moving image to fixed image grid).
     """
 
-    inputVolume: vtkMRMLScalarVolumeNode
-    imageThreshold: Annotated[float, WithinRange(-100, 500)] = 100
-    invertThreshold: bool = False
-    thresholdedVolume: vtkMRMLScalarVolumeNode
-    invertedVolume: vtkMRMLScalarVolumeNode
+    fixedVolume: vtkMRMLScalarVolumeNode
+    movingVolume: vtkMRMLScalarVolumeNode
+    samplingRate: Annotated[float, WithinRange(0, 1.0)] = 0.2
+    forwardTransform: vtkMRMLTransformNode
 
 class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """Uses ScriptedLoadableModuleWidget base class, available at:
@@ -163,10 +167,11 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.setParameterNode(self.logic.getParameterNode())
 
         # Select default input nodes if nothing is selected yet to save a few clicks for the user
-        if not self._parameterNode.inputVolume:
+        if not self._parameterNode.fixedVolume:
             firstVolumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
             if firstVolumeNode:
-                self._parameterNode.inputVolume = firstVolumeNode
+                self._parameterNode.fixedVolume = firstVolumeNode
+                self._parameterNode.movingVolume = firstVolumeNode
 
     def setParameterNode(self, inputParameterNode: Optional[ANTSRegistrationParameterNode]) -> None:
         """
@@ -186,7 +191,7 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._checkCanApply()
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and self._parameterNode.inputVolume and self._parameterNode.thresholdedVolume:
+        if self._parameterNode and self._parameterNode.fixedVolume and self._parameterNode.movingVolume and self._parameterNode.forwardTransform:
             self.ui.applyButton.toolTip = _("Compute output volume")
             self.ui.applyButton.enabled = True
         else:
@@ -197,8 +202,9 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         """Run processing when user clicks "Apply" button."""
         with slicer.util.tryWithErrorDisplay(_("Failed to compute results."), waitCursor=True):
             # Compute output
-            self.logic.process(self.ui.inputSelector.currentNode(), self.ui.outputSelector.currentNode(),
-                               self.ui.imageThresholdSliderWidget.value)
+            self.logic.process(self.ui.fixedSelector.currentNode(), self.ui.movingSelector.currentNode(),
+                               self.ui.outputSelector.currentNode(), self.ui.metric.currentText,
+                               self.ui.samplingRateSliderWidget.value)
 
 
 #
@@ -224,45 +230,45 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
         return ANTSRegistrationParameterNode(super().getParameterNode())
 
     def process(self,
-                inputVolume: vtkMRMLScalarVolumeNode,
-                outputVolume: vtkMRMLScalarVolumeNode,
-                samplingRate: float,
-                showResult: bool = True) -> None:
+                fixedVolume: vtkMRMLScalarVolumeNode,
+                movingVolume: vtkMRMLScalarVolumeNode,
+                forwardTransform: vtkMRMLTransformNode,
+                metric: str = "Mattes",
+                samplingRate: float = 0.2,
+                ) -> None:
         """
         Run the processing algorithm.
         Can be used without GUI widget.
-        :param inputVolume: volume to be thresholded
+        :param fixedVolume: volume to be thresholded
         :param outputVolume: thresholding result
         :param samplingRate: values above/below this threshold will be set to 0
         :param showResult: show output volume in slice viewers
         """
 
-        if not inputVolume or not outputVolume:
-            raise ValueError("Input or output volume is invalid")
+        if not fixedVolume or not movingVolume or not forwardTransform:
+            raise ValueError("Input volumes or output transform are invalid")
 
         import time
 
         logging.info('Instantiating the filter')
         itk = self.itk
-        itkImage = self.getITKImageFromVolumeNode(inputVolume)
-        ants_reg = itk.ANTSRegistration[type(itkImage), type(itkImage)].New()
-        ants_reg.SetFixedImage(itkImage)
-        ants_reg.SetMovingImage(itkImage)
+        fixedImage = self.getITKImageFromVolumeNode(fixedVolume)
+        ants_reg = itk.ANTSRegistration[type(fixedImage), type(fixedImage)].New()
+        ants_reg.SetFixedImage(fixedImage)
+        movingImage = self.getITKImageFromVolumeNode(movingVolume)
+        ants_reg.SetMovingImage(fixedImage)
         # ants_reg.SetSamplingRate(samplingRate)
 
         logging.info('Processing started')
         startTime = time.time()
         ants_reg.Update()
-        forwardTransform = ants_reg.GetForwardTransform()
-        print(forwardTransform)
+        outTransform = ants_reg.GetForwardTransform()
+        print(outTransform)
+        # TODO: set this to the output transform node
         stopTime = time.time()
 
         stopTime = time.time()
         logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")
-        
-        # self.setITKImageToVolumeNode(result, outputVolume, showResult)
-        if showResult:
-            logging.info('GUI updated with results')
 
 
 
@@ -301,10 +307,10 @@ class ANTSRegistrationTest(ScriptedLoadableModuleTest):
         import SampleData
 
         registerSampleData()
-        inputVolume = SampleData.downloadSample("ITKANTsPhantomRF")
+        fixedVolume = SampleData.downloadSample("ITKANTsPhantomRF")
         self.delayDisplay("Loaded test data set")
 
-        inputScalarRange = inputVolume.GetImageData().GetScalarRange()
+        inputScalarRange = fixedVolume.GetImageData().GetScalarRange()
         self.assertEqual(inputScalarRange[0], -4569)
         self.assertEqual(inputScalarRange[1], 4173)
 
@@ -315,19 +321,19 @@ class ANTSRegistrationTest(ScriptedLoadableModuleTest):
         logic = ANTSRegistrationLogic()
 
         # Test algorithm with axis of propagation: 2
-        logic.process(inputVolume, outputVolume, 2)
+        logic.process(fixedVolume, outputVolume, 2)
         outputScalarRange = outputVolume.GetImageData().GetScalarRange()
         self.assertAlmostEqual(outputScalarRange[0], 0, places=5)
         self.assertAlmostEqual(outputScalarRange[1], 3.65992, places=5)
 
         # Test algorithm with axis of propagation: 1
-        logic.process(inputVolume, outputVolume, 1)
+        logic.process(fixedVolume, outputVolume, 1)
         outputScalarRange = outputVolume.GetImageData().GetScalarRange()
         self.assertAlmostEqual(outputScalarRange[0], 0.027904, places=5)
         self.assertAlmostEqual(outputScalarRange[1], 3.67797, places=5)
 
         # Test algorithm with axis of propagation: 0
-        logic.process(inputVolume, outputVolume, 0)
+        logic.process(fixedVolume, outputVolume, 0)
         outputScalarRange = outputVolume.GetImageData().GetScalarRange()
         self.assertAlmostEqual(outputScalarRange[0], 0.00406048, places=5)
         self.assertAlmostEqual(outputScalarRange[1], 3.66787, places=5)
