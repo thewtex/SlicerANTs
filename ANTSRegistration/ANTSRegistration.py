@@ -198,7 +198,7 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         with slicer.util.tryWithErrorDisplay(_("Failed to compute results."), waitCursor=True):
             # Compute output
             self.logic.process(self.ui.inputSelector.currentNode(), self.ui.outputSelector.currentNode(),
-                               self.ui.imageThresholdSliderWidget.value, self.ui.invertOutputCheckBox.checked)
+                               self.ui.imageThresholdSliderWidget.value)
 
 
 #
@@ -226,16 +226,14 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
     def process(self,
                 inputVolume: vtkMRMLScalarVolumeNode,
                 outputVolume: vtkMRMLScalarVolumeNode,
-                imageThreshold: float,
-                invert: bool = False,
+                samplingRate: float,
                 showResult: bool = True) -> None:
         """
         Run the processing algorithm.
         Can be used without GUI widget.
         :param inputVolume: volume to be thresholded
         :param outputVolume: thresholding result
-        :param imageThreshold: values above/below this threshold will be set to 0
-        :param invert: if True then values above the threshold will be set to 0, otherwise values below are set to 0
+        :param samplingRate: values above/below this threshold will be set to 0
         :param showResult: show output volume in slice viewers
         """
 
@@ -247,18 +245,22 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
         logging.info('Instantiating the filter')
         itk = self.itk
         itkImage = self.getITKImageFromVolumeNode(inputVolume)
-        ants_reg = itk.ANTSRegistration.New(itkImage, itkImage)  # register to itself for now
+        ants_reg = itk.ANTSRegistration[type(itkImage), type(itkImage)].New()
+        ants_reg.SetFixedImage(itkImage)
+        ants_reg.SetMovingImage(itkImage)
+        # ants_reg.SetSamplingRate(samplingRate)
 
         logging.info('Processing started')
         startTime = time.time()
         ants_reg.Update()
-        result = ants_reg.GetOutput()
+        forwardTransform = ants_reg.GetForwardTransform()
+        print(forwardTransform)
         stopTime = time.time()
 
         stopTime = time.time()
         logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")
         
-        self.setITKImageToVolumeNode(result, outputVolume, showResult)
+        # self.setITKImageToVolumeNode(result, outputVolume, showResult)
         if showResult:
             logging.info('GUI updated with results')
 
