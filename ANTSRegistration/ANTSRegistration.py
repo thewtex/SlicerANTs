@@ -252,10 +252,10 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
 
         logging.info('Instantiating the filter')
         itk = self.itk
-        fixedImage = self.getITKImageFromVolumeNode(fixedVolume)
+        fixedImage = slicer.util.itkImageFromVolume(fixedVolume)
         ants_reg = itk.ANTSRegistration[type(fixedImage), type(fixedImage)].New()
         ants_reg.SetFixedImage(fixedImage)
-        movingImage = self.getITKImageFromVolumeNode(movingVolume)
+        movingImage = slicer.util.itkImageFromVolume(movingVolume)
         ants_reg.SetMovingImage(fixedImage)
         ants_reg.SetSamplingRate(samplingRate)
 
@@ -268,6 +268,9 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
         # slicer.util.updateTransformMatrixFromArray
         # vtkITKTransformConverter.CreateVTKTransformFromITK()
         # slicer.util.updateTransformFromITKTransform(outTransform, forwardTransform)
+
+        # slicer.util.updateVolumeFromITKImage(outputVolumeNode, itkImage)
+        # slicer.util.setSliceViewerLayers(background=outputVolumeNode, fit=True, rotateToVolumePlane=True)
         stopTime = time.time()
 
         stopTime = time.time()
