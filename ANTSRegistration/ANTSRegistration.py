@@ -84,8 +84,14 @@ class ANTSRegistrationParameterNode:
 
     fixedVolume: vtkMRMLScalarVolumeNode
     movingVolume: vtkMRMLScalarVolumeNode
-    samplingRate: Annotated[float, WithinRange(0, 1.0)] = 0.2
+    initialTransform: vtkMRMLTransformNode
     forwardTransform: vtkMRMLTransformNode
+    transformType: str = "Affine"
+    gradientStep: Annotated[float, WithinRange(0, 10.0)] = 0.2
+    affineMetric: str = "Mattes"
+    synMetric: str = "Mattes"
+    samplingRate: Annotated[float, WithinRange(0, 1.0)] = 0.2
+
 
 class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """Uses ScriptedLoadableModuleWidget base class, available at:
@@ -203,7 +209,7 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         with slicer.util.tryWithErrorDisplay(_("Failed to compute results."), waitCursor=True):
             # Compute output
             self.logic.process(self.ui.fixedSelector.currentNode(), self.ui.movingSelector.currentNode(),
-                               self.ui.outputSelector.currentNode(), self.ui.metric.currentText,
+                               self.ui.outputSelector.currentNode(), self.ui.affineMetricWidget.currentText,
                                self.ui.samplingRateSliderWidget.value)
 
 
