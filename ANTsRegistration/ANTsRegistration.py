@@ -373,10 +373,14 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self._parameterNode.GetNodeReference(self.logic.params.OUTPUT_VOLUME_REF)
         )
         self.ui.outputInterpolationComboBox.currentText = (
-            self._parameterNode.GetParameter(self.logic.params.OUTPUT_INTERPOLATION_PARAM)
+            self._parameterNode.GetParameter(
+                self.logic.params.OUTPUT_INTERPOLATION_PARAM
+            )
         )
         self.ui.outputDisplacementFieldCheckBox.checked = int(
-            self._parameterNode.GetParameter(self.logic.params.CREATE_DISPLACEMENT_FIELD_PARAM)
+            self._parameterNode.GetParameter(
+                self.logic.params.CREATE_DISPLACEMENT_FIELD_PARAM
+            )
         )
 
         self.ui.initialTransformTypeComboBox.currentIndex = (
@@ -388,7 +392,9 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             + 2
         )
         self.ui.initialTransformNodeComboBox.setCurrentNode(
-            self._parameterNode.GetNodeReference(self.logic.params.INITIAL_TRANSFORM_REF)
+            self._parameterNode.GetNodeReference(
+                self.logic.params.INITIAL_TRANSFORM_REF
+            )
             if self.ui.initialTransformTypeComboBox.currentIndex == 1
             else None
         )
@@ -408,7 +414,9 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.winsorizeRangeWidget.setMinimumValue(float(winsorizeIntensities[0]))
         self.ui.winsorizeRangeWidget.setMaximumValue(float(winsorizeIntensities[1]))
         self.ui.computationPrecisionComboBox.currentText = (
-            self._parameterNode.GetParameter(self.logic.params.COMPUTATION_PRECISION_PARAM)
+            self._parameterNode.GetParameter(
+                self.logic.params.COMPUTATION_PRECISION_PARAM
+            )
         )
 
         self.ui.runRegistrationButton.enabled = (
@@ -481,7 +489,8 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.ui.outputTransformComboBox.currentNodeID,
         )
         self._parameterNode.SetNodeReferenceID(
-            self.logic.params.OUTPUT_VOLUME_REF, self.ui.outputVolumeComboBox.currentNodeID
+            self.logic.params.OUTPUT_VOLUME_REF,
+            self.ui.outputVolumeComboBox.currentNodeID,
         )
         self._parameterNode.SetParameter(
             self.logic.params.OUTPUT_INTERPOLATION_PARAM,
@@ -502,7 +511,8 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
 
         self._parameterNode.SetParameter(
-            self.logic.params.DIMENSIONALITY_PARAM, str(self.ui.dimensionalitySpinBox.value)
+            self.logic.params.DIMENSIONALITY_PARAM,
+            str(self.ui.dimensionalitySpinBox.value),
         )
         self._parameterNode.SetParameter(
             self.logic.params.HISTOGRAM_MATCHING_PARAM,
@@ -769,7 +779,9 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                 self.params.HISTOGRAM_MATCHING_PARAM,
                 str(presetParameters["generalSettings"]["histogramMatching"]),
             )
-        if not parameterNode.GetParameter(self.params.WINSORIZE_IMAGE_INTENSITIES_PARAM):
+        if not parameterNode.GetParameter(
+            self.params.WINSORIZE_IMAGE_INTENSITIES_PARAM
+        ):
             parameterNode.SetParameter(
                 self.params.WINSORIZE_IMAGE_INTENSITIES_PARAM,
                 ",".join(
@@ -882,15 +894,13 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         precision_type = itk.F
         if generalSettings["computationPrecision"] == "double":
             precision_type = itk.D
-        fixedImage = slicer.util.itkImageFromVolume(
-            stages[0]["metrics"][0]["fixed"]
-        )
-        movingImage = slicer.util.itkImageFromVolume(
-            stages[0]["metrics"][0]["moving"]
-        )
+        fixedImage = slicer.util.itkImageFromVolume(stages[0]["metrics"][0]["fixed"])
+        movingImage = slicer.util.itkImageFromVolume(stages[0]["metrics"][0]["moving"])
 
         # initial_itk_transform = itk.IdentityTransform[precision_type, fixedImage.ndim].New()  # not wrapped for float in 5.3
-        initial_itk_transform = itk.AffineTransform[precision_type, fixedImage.ndim].New()
+        initial_itk_transform = itk.AffineTransform[
+            precision_type, fixedImage.ndim
+        ].New()
         if "initialTransformNode" in initialTransformSettings:
             print("Passing Slicer nodes to ITK filters is not yet implemented")
             # initial_itk_transform = slicer.util.itkTransformFromTransformNode(
@@ -926,10 +936,10 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
             ants_reg.SetGradientStep(float(transform_settings[0]))
             # TODO: other parameters depend on the type of transform, see
             # https://github.com/ANTsX/ANTs/blob/beb4aa2e9456445249de6ae6698e3f6ed8c4767b/Examples/antsRegistration.cxx#L370-L391
-            
+
             assert len(stage["metrics"]) == 1
             metric_type = stage["metrics"][0]["type"]
-                
+
             metric_settings = stage["metrics"][0]["settings"].split(",")
             if metric_type in ["MI", "Mattes"]:
                 ants_reg.SetNumberOfBins(int(metric_settings[1]))
@@ -941,7 +951,7 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                 ants_reg.SetSamplingRate(float(metric_settings[3]))
             if len(metric_settings) > 4:
                 ants_reg.SetUseGradientFilter(bool(metric_settings[4]))
-                
+
             iterations = []
             shrink_factors = []
             sigmas = []
@@ -951,28 +961,40 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                 sigmas.append(step["smoothingSigmas"])
             # ants_reg.SetShrinkFactors(shrink_factors)  # we need newer pip package
             # ants_reg.SetSmoothingSigmas(sigmas)  # we need newer pip package
-            ants_reg.SetSmoothingInPhysicalUnits(stage["levels"]["smoothingSigmasUnit"] == "mm")
+            ants_reg.SetSmoothingInPhysicalUnits(
+                stage["levels"]["smoothingSigmasUnit"] == "mm"
+            )
             # not exposed:
             # stage["levels"]["smoothingSigmasUnit"]
             # stage["levels"]["convergenceThreshold"]
-            
-            if transform_type in ["Rigid", "Affine", "CompositeAffine", "Similarity", "Translation"]:
+
+            if transform_type in [
+                "Rigid",
+                "Affine",
+                "CompositeAffine",
+                "Similarity",
+                "Translation",
+            ]:
                 ants_reg.SetAffineMetric(metric_type)
                 # ants_reg.SetAffineIterations(iterations)  # we need newer pip package
             else:
                 ants_reg.SetSynMetric(metric_type)
                 # ants_reg.SetSynIterations(iterations)  # we need newer pip package
-            
+
             if stage["masks"]["fixed"] != "":
-                ants_reg.SetFixedImageMask(slicer.util.itkImageFromVolume(stage["masks"]["fixed"]))
+                ants_reg.SetFixedImageMask(
+                    slicer.util.itkImageFromVolume(stage["masks"]["fixed"])
+                )
             if stage["masks"]["moving"] != "":
-                ants_reg.SetMovingImageMask(slicer.util.itkImageFromVolume(stage["masks"]["moving"]))
-                
+                ants_reg.SetMovingImageMask(
+                    slicer.util.itkImageFromVolume(stage["masks"]["moving"])
+                )
+
             ants_reg.Update()
             initial_itk_transform = ants_reg.GetForwardTransform()
             slicer.app.processEvents()
             # TODO: update progress bar
-            
+
         outTransform = ants_reg.GetForwardTransform()
         print(outTransform)
         slicer.app.processEvents()
@@ -984,7 +1006,9 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         if outputSettings["volume"] is not None:
             itkImage = ants_reg.GetWarpedMovingImage()
             slicer.util.updateVolumeFromITKImage(outputSettings["volume"], itkImage)
-            slicer.util.setSliceViewerLayers(background=outputSettings["volume"], fit=True, rotateToVolumePlane=True)
+            slicer.util.setSliceViewerLayers(
+                background=outputSettings["volume"], fit=True, rotateToVolumePlane=True
+            )
 
         stopTime = time.time()
         logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")
