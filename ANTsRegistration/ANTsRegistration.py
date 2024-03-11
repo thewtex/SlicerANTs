@@ -723,8 +723,6 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                     module = getattr(module, modulePart)
                 importlib.reload(module)  # reload
 
-        self._cliParams = {}
-
     def setDefaultParameters(self, parameterNode):
         """
         Initialize parameter node with default settings.
@@ -877,15 +875,6 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
             generalSettings = {}
         if initialTransformSettings is None:
             initialTransformSettings = {}
-        initialTransformSettings["fixedImageNode"] = stages[0]["metrics"][0]["fixed"]
-        initialTransformSettings["movingImageNode"] = stages[0]["metrics"][0]["moving"]
-
-        antsCommand = self.getInitialMovingTransformCommand(
-            **initialTransformSettings
-        )
-        for stage in stages:
-            antsCommand = antsCommand + self.getStageCommand(**stage)
-
 
         logging.info("Instantiating the filter")
         itk = self.itk
@@ -893,32 +882,90 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         if generalSettings["computationPrecision"] == "double":
             precision_type = itk.D
         fixedImage = slicer.util.itkImageFromVolume(
-            initialTransformSettings["fixedImageNode"]
+            stages[0]["metrics"][0]["fixed"]
         )
         movingImage = slicer.util.itkImageFromVolume(
-            initialTransformSettings["movingImageNode"]
+            stages[0]["metrics"][0]["moving"]
         )
         # TODO: update name (ANTS->ANTs), use precision_type in instantiation
         ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage)].New()
         ants_reg.SetFixedImage(fixedImage)
         ants_reg.SetMovingImage(movingImage)
-        assert(fixedImage.ndim == movingImage.ndim)
-        assert(fixedImage.ndim == generalSettings["dimensionality"])
-        # ants_reg.SetSamplingRate(samplingRate)
+        assert fixedImage.ndim == movingImage.ndim
+        assert fixedImage.ndim == generalSettings["dimensionality"]
         # currently unexposed parameters
         # generalSettings["winsorizeImageIntensities"]
         # generalSettings["histogramMatching"]
         # outputSettings["interpolation"]
         # outputSettings["useDisplacementField"]
 
-        # TODO: implement this conversion
-        # initial_itk_transform = slicer.util.itkTransformFromTransformNode(
-        #     initialTransformSettings["initialTransformNode"])
-        # ants_reg.SetInitialTransform(initial_itk_transform)
+        # initial_itk_transform = itk.IdentityTransform[precision_type, fixedImage.ndim].New()  # not wrapped for float in 5.3
+        initial_itk_transform = itk.AffineTransform[precision_type, fixedImage.ndim].New()
+        if "initialTransformNode" in initialTransformSettings:
+            print("Passing Slicer nodes to ITK filters is not yet implemented")
+            # initial_itk_transform = slicer.util.itkTransformFromTransformNode(
+            #     initialTransformSettings["initialTransformNode"])
+            # ants_reg.SetInitialTransform(initial_itk_transform)
+        elif "initializationFeature" in initialTransformSettings:
+            print("This initialization is not yet implemented")
+            # use itk.CenteredTransformInitializer to construct initial transform
 
-        logging.info("Processing started")
         startTime = time.time()
-        ants_reg.Update()
+        antsCommand = ""
+        for stage_index, stage in enumerate(stages):
+            logging.info(f"Stage {stage_index} started")
+            
+            ants_reg.SetTypeOfTransform(stage["transformParameters"]["transform"])
+            transform_settings = stage["transformParameters"]["settings"].split(",")
+            ants_reg.SetGradientStep(float(transform_settings[0]))
+            # TODO: other parameters depend on the type of transform, see
+            # https://github.com/ANTsX/ANTs/blob/beb4aa2e9456445249de6ae6698e3f6ed8c4767b/Examples/antsRegistration.cxx#L370-L391
+            
+            assert len(stage["metrics"]) == 1
+            metric_type = stage["metrics"][0]["type"]
+                
+            metric_settings = stage["metrics"][0]["settings"].split(",")
+            if metric_type in ["MI", "Mattes"]:
+                ants_reg.SetNumberOfBins(int(metric_settings[1]))
+            else:
+                ants_reg.SetRadius(int(metric_settings[1]))
+            # if len(metric_settings) > 2:
+            #     ants_reg.SetSamplingStrategy(metric_settings[2])  # not exposed
+            if len(metric_settings) > 3:
+                ants_reg.SetSamplingRate(float(metric_settings[3]))
+            if len(metric_settings) > 4:
+                ants_reg.SetUseGradientFilter(bool(metric_settings[4]))
+                
+            iterations = []
+            shrink_factors = []
+            sigmas = []
+            for step in stage["levels"]["steps"]:
+                iterations.append(step["convergence"])
+                shrink_factors.append(step["shrinkFactors"])
+                sigmas.append(step["smoothingSigmas"])
+            # ants_reg.SetShrinkFactors(shrink_factors)  # we need newer pip package
+            # ants_reg.SetSmoothingSigmas(sigmas)  # we need newer pip package
+            ants_reg.SetSmoothingInPhysicalUnits(stage["levels"]["smoothingSigmasUnit"] == "mm")
+            # not exposed:
+            # stage["levels"]["smoothingSigmasUnit"]
+            # stage["levels"]["convergenceThreshold"]
+            
+            if stage["transformParameters"]["transform"] in ["Rigid", "Affine", "CompositeAffine", "Similarity", "Translation"]:
+                ants_reg.SetAffineMetric(metric_type)
+                # ants_reg.SetAffineIterations(iterations)  # we need newer pip package
+            else:
+                ants_reg.SetSynMetric(metric_type)
+                # ants_reg.SetSynIterations(iterations)  # we need newer pip package
+            
+            if stage["masks"]["fixed"] != "":
+                ants_reg.SetFixedImageMask(slicer.util.itkImageFromVolume(stage["masks"]["fixed"]))
+            if stage["masks"]["moving"] != "":
+                ants_reg.SetMovingImageMask(slicer.util.itkImageFromVolume(stage["masks"]["moving"]))
+                
+            ants_reg.Update()
+            initial_itk_transform = ants_reg.GetForwardTransform()
+            # TODO: update progress bar
+            
         outTransform = ants_reg.GetForwardTransform()
         print(outTransform)
         # TODO: set this to the output transform node
@@ -933,91 +980,6 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
 
         stopTime = time.time()
         logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")
-
-
-    def getInitialMovingTransformCommand(
-        self,
-        initialTransformNode=None,
-        initializationFeature=-1,
-        fixedImageNode=None,
-        movingImageNode=None,
-    ):
-        if initialTransformNode is not None:
-            return " --initial-moving-transform %s" % self.getOrSetCLIParam(
-                initialTransformNode, "inputTransform"
-            )
-        elif initializationFeature >= 0:
-            return " --initial-moving-transform [%s,%s,%i]" % (
-                self.getOrSetCLIParam(fixedImageNode),
-                self.getOrSetCLIParam(movingImageNode),
-                initializationFeature,
-            )
-        else:
-            return ""
-
-    def getStageCommand(self, transformParameters, metrics, levels, masks):
-        command = self.getTransformCommand(**transformParameters)
-        for metric in metrics:
-            command = command + self.getMetricCommand(**metric)
-        command = command + self.getLevelsCommand(**levels)
-        command = command + self.getMasksCommand(**masks)
-        return command
-
-    def getTransformCommand(self, transform, settings):
-        return " --transform %s[%s]" % (transform, settings)
-
-    def getMetricCommand(self, type, fixed, moving, settings):
-        return " --metric %s[%s,%s,%s]" % (
-            type,
-            self.getOrSetCLIParam(fixed),
-            self.getOrSetCLIParam(moving),
-            settings,
-        )
-
-    def getMasksCommand(self, fixed=None, moving=None):
-        fixedMask = self.getOrSetCLIParam(fixed) if fixed else ""
-        movingMask = self.getOrSetCLIParam(moving) if moving else ""
-        if fixedMask and movingMask:
-            return " --masks [%s,%s]" % (fixedMask, movingMask)
-        return ""
-
-    def getLevelsCommand(
-        self, steps, convergenceThreshold, convergenceWindowSize, smoothingSigmasUnit
-    ):
-        convergence = self.joinStepsInfoForKey(steps, "convergence")
-        smoothingSigmas = self.joinStepsInfoForKey(steps, "smoothingSigmas")
-        shrinkFactors = self.joinStepsInfoForKey(steps, "shrinkFactors")
-        command = " --convergence [%s,1e-%i,%i]" % (
-            convergence,
-            convergenceThreshold,
-            convergenceWindowSize,
-        )
-        command = command + " --smoothing-sigmas %s%s" % (
-            smoothingSigmas,
-            smoothingSigmasUnit,
-        )
-        command = command + " --shrink-factors %s" % shrinkFactors
-        command = command + " --use-estimate-learning-rate-once"
-        return command
-
-    def joinStepsInfoForKey(self, steps, key):
-        out = [str(step[key]) for step in steps]
-        return "x".join(out)
-
-    def getOrSetCLIParam(self, mrmlNode, cliparam="inputVolume"):
-        greatestInputVolume = 0
-        nodeID = mrmlNode.GetID()
-        # get part
-        for key, val in self._cliParams.items():
-            if key.startswith(cliparam) and nodeID == val:
-                return "$" + key
-            elif key.startswith("inputVolume"):
-                greatestInputVolume = int(key[-2:])
-        # set part
-        if cliparam == "inputVolume":
-            cliparam = "inputVolume%02i" % (greatestInputVolume + 1)
-        self._cliParams[cliparam] = nodeID
-        return "$" + cliparam
 
 
 class PresetManager:
