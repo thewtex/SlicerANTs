@@ -887,17 +887,6 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         movingImage = slicer.util.itkImageFromVolume(
             stages[0]["metrics"][0]["moving"]
         )
-        # TODO: update name (ANTS->ANTs), use precision_type in instantiation
-        ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage)].New()
-        ants_reg.SetFixedImage(fixedImage)
-        ants_reg.SetMovingImage(movingImage)
-        assert fixedImage.ndim == movingImage.ndim
-        assert fixedImage.ndim == generalSettings["dimensionality"]
-        # currently unexposed parameters
-        # generalSettings["winsorizeImageIntensities"]
-        # generalSettings["histogramMatching"]
-        # outputSettings["interpolation"]
-        # outputSettings["useDisplacementField"]
 
         # initial_itk_transform = itk.IdentityTransform[precision_type, fixedImage.ndim].New()  # not wrapped for float in 5.3
         initial_itk_transform = itk.AffineTransform[precision_type, fixedImage.ndim].New()
@@ -913,6 +902,18 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         startTime = time.time()
         antsCommand = ""
         for stage_index, stage in enumerate(stages):
+            # TODO: update name (ANTS->ANTs), use precision_type in instantiation
+            ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage)].New()
+            ants_reg.SetFixedImage(fixedImage)
+            ants_reg.SetMovingImage(movingImage)
+            ants_reg.SetInitialTransform(initial_itk_transform)
+            assert fixedImage.ndim == movingImage.ndim
+            assert fixedImage.ndim == generalSettings["dimensionality"]
+            # currently unexposed parameters
+            # generalSettings["winsorizeImageIntensities"]
+            # generalSettings["histogramMatching"]
+            # outputSettings["interpolation"]
+            # outputSettings["useDisplacementField"]
             logging.info(f"Stage {stage_index} started")
             
             ants_reg.SetTypeOfTransform(stage["transformParameters"]["transform"])
