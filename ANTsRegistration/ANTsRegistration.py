@@ -47,16 +47,12 @@ class ANTsRegistration(ScriptedLoadableModule):
         self.parent.helpText = _(
             "ANTs computes high-dimensional mapping to capture the statistics of brain structure and function."
         )
-        # TODO: add grant number
         self.parent.acknowledgementText = _(
             """
 This file was originally developed by Dženan Zukić, Kitware Inc.,
-and was partially funded by NIH grant .
+and was partially funded by NIH grant P01HD104435.
 """
         )
-
-        # Additional initialization step after application startup is complete
-        # slicer.app.connect("startupCompleted()", registerSampleData)
 
 
 class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
@@ -884,29 +880,18 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         initialTransformSettings["fixedImageNode"] = stages[0]["metrics"][0]["fixed"]
         initialTransformSettings["movingImageNode"] = stages[0]["metrics"][0]["moving"]
 
-        self._cliParams = {}
-        self.getOrSetCLIParam(
-            stages[0]["metrics"][0]["fixed"]
-        )  # put in first position. will be used as reference in cli
-        self._cliParams["antsCommand"] = self.getAntsRegistrationCommand(
-            stages, outputSettings, initialTransformSettings, generalSettings
+        antsCommand = self.getInitialMovingTransformCommand(
+            **initialTransformSettings
         )
+        for stage in stages:
+            antsCommand = antsCommand + self.getStageCommand(**stage)
 
-        if outputSettings["transform"] is not None:
-            if ("useDisplacementField" in outputSettings) and outputSettings[
-                "useDisplacementField"
-            ]:
-                self._cliParams["outputDisplacementField"] = outputSettings["transform"]
-            else:
-                self._cliParams["outputCompositeTransform"] = outputSettings[
-                    "transform"
-                ]
 
         logging.info("Instantiating the filter")
         itk = self.itk
-        precision_type = itk.D
-        if generalSettings["computationPrecision"] == "float":
-            precision_type = itk.F
+        precision_type = itk.F
+        if generalSettings["computationPrecision"] == "double":
+            precision_type = itk.D
         fixedImage = slicer.util.itkImageFromVolume(
             initialTransformSettings["fixedImageNode"]
         )
@@ -917,7 +902,19 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
             initialTransformSettings["movingImageNode"]
         )
         ants_reg.SetMovingImage(fixedImage)
+        assert(fixedImage.ndim == movingImage.ndim)
+        assert(fixedImage.ndim == generalSettings["dimensionality"])
         # ants_reg.SetSamplingRate(samplingRate)
+        # currently unexposed parameters
+        # generalSettings["winsorizeImageIntensities"]
+        # generalSettings["histogramMatching"]
+        # outputSettings["interpolation"]
+        # outputSettings["useDisplacementField"]
+
+        # TODO: implement this conversion
+        # initial_itk_transform = slicer.util.itkTransformFromTransformNode(
+        #     initialTransformSettings["initialTransformNode"])
+        # ants_reg.SetInitialTransform(initial_itk_transform)
 
         logging.info("Processing started")
         startTime = time.time()
@@ -929,65 +926,14 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         # vtkITKTransformConverter.CreateVTKTransformFromITK()
         # slicer.util.updateTransformFromITKTransform(outTransform, forwardTransform)
 
-        # slicer.util.updateVolumeFromITKImage(outputVolumeNode, itkImage)
-        # slicer.util.setSliceViewerLayers(background=outputVolumeNode, fit=True, rotateToVolumePlane=True)
+        if outputSettings["volume"] is not None:
+            itkImage = ants_reg.GetWarpedMovingImage()
+            slicer.util.updateVolumeFromITKImage(outputSettings["volume"], itkImage)
+            slicer.util.setSliceViewerLayers(background=outputSettings["volume"], fit=True, rotateToVolumePlane=True)
 
         stopTime = time.time()
         logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")
 
-    def getAntsRegistrationCommand(
-        self,
-        stages,
-        outputSettings,
-        initialTransformSettings=None,
-        generalSettings=None,
-    ):
-        if generalSettings is None:
-            generalSettings = {}
-        if initialTransformSettings is None:
-            initialTransformSettings = {}
-        antsCommand = self.getGeneralSettingsCommand(**generalSettings)
-        antsCommand = antsCommand + self.getOutputCommand(
-            interpolation=outputSettings["interpolation"],
-            volume=outputSettings["volume"],
-        )
-        antsCommand = antsCommand + self.getInitialMovingTransformCommand(
-            **initialTransformSettings
-        )
-        for stage in stages:
-            antsCommand = antsCommand + self.getStageCommand(**stage)
-        return antsCommand
-
-    def getGeneralSettingsCommand(
-        self,
-        dimensionality=3,
-        histogramMatching=False,
-        winsorizeImageIntensities=None,
-        computationPrecision="float",
-    ):
-        if winsorizeImageIntensities is None:
-            winsorizeImageIntensities = [0, 1]
-        command = "--dimensionality %i" % dimensionality
-        command = command + " --use-histogram-matching %i" % histogramMatching
-        command = command + " --winsorize-image-intensities [%.3f,%.3f]" % tuple(
-            winsorizeImageIntensities
-        )
-        command = command + " --float $useFloat"
-        command = command + " --verbose 1"
-        return command
-
-    def getOutputCommand(self, interpolation="Linear", volume=None):
-        command = " --interpolation %s" % interpolation
-        if volume is not None:
-            command = command + " --output [%s,%s]" % (
-                "$outputBase",
-                self.getOrSetCLIParam(volume, "outputVolume"),
-            )
-        else:
-            command = command + " --output $outputBase"
-        command = command + " --write-composite-transform 1"
-        command = command + " --collapse-output-transforms 1"
-        return command
 
     def getInitialMovingTransformCommand(
         self,
