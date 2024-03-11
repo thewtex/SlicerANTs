@@ -26,6 +26,7 @@ from slicer import (
     vtkMRMLGridTransformNode,
 )
 
+
 class ANTsRegistration(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
@@ -34,16 +35,22 @@ class ANTsRegistration(ScriptedLoadableModule):
     def __init__(self, parent):
         ScriptedLoadableModule.__init__(self, parent)
         self.parent.title = _("ANTs Registration")
-        self.parent.categories = [translate("qSlicerAbstractCoreModule", "Registration")]
+        self.parent.categories = [
+            translate("qSlicerAbstractCoreModule", "Registration")
+        ]
         self.parent.dependencies = ["ITKANTsCommon"]
         self.parent.contributors = ["Dženan Zukić (Kitware Inc.)"]
         # _() function marks text as translatable to other languages
-        self.parent.helpText = _("ANTs computes high-dimensional mapping to capture the statistics of brain structure and function.")
+        self.parent.helpText = _(
+            "ANTs computes high-dimensional mapping to capture the statistics of brain structure and function."
+        )
         # TODO: add grant number
-        self.parent.acknowledgementText = _("""
+        self.parent.acknowledgementText = _(
+            """
 This file was originally developed by Dženan Zukić, Kitware Inc.,
 and was partially funded by NIH grant .
-""")
+"""
+        )
 
         # Additional initialization step after application startup is complete
         slicer.app.connect("startupCompleted()", registerSampleData)
@@ -53,21 +60,23 @@ and was partially funded by NIH grant .
 # Register sample data sets in Sample Data module
 #
 
+
 def registerSampleData():
     """
     Add data sets to Sample Data module.
     """
     import SampleData
-    iconsPath = os.path.join(os.path.dirname(__file__), 'Resources/Icons')
+
+    iconsPath = os.path.join(os.path.dirname(__file__), "Resources/Icons")
     file_sha512 = "b648140f38d2c3189388a35fea65ef3b4311237de8c454c6b98480d84b139ec8afb8ec5881c5d9513cdc208ae781e1e442988be81564adff77edcfb30b921a28"
     SampleData.SampleDataLogic.registerCustomSampleDataSource(
-        category='ITKANTs',
-        sampleName='ITKANTsPhantomRF',
-        thumbnailFileName=os.path.join(iconsPath, 'SampleRF.png'),
+        category="ITKANTs",
+        sampleName="ITKANTsPhantomRF",
+        thumbnailFileName=os.path.join(iconsPath, "SampleRF.png"),
         uris=f"https://data.kitware.com:443/api/v1/file/hashsum/SHA512/{file_sha512}/download",  # "https://data.kitware.com/api/v1/item/57b5d5d88d777f10f269444b/download", "https://data.kitware.com/api/v1/file/57b5d5d88d777f10f269444f/download",
-        fileNames='uniform_phantom_8.9_MHz.mha',
-        checksums=f'SHA512:{file_sha512}',
-        nodeNames='ITKANTsPhantomRF'
+        fileNames="uniform_phantom_8.9_MHz.mha",
+        checksums=f"SHA512:{file_sha512}",
+        nodeNames="ITKANTsPhantomRF",
     )
 
 
@@ -128,8 +137,12 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # Connections
 
         # These connections ensure that we update parameter node when scene is closed
-        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose)
-        self.addObserver(slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose)
+        self.addObserver(
+            slicer.mrmlScene, slicer.mrmlScene.StartCloseEvent, self.onSceneStartClose
+        )
+        self.addObserver(
+            slicer.mrmlScene, slicer.mrmlScene.EndCloseEvent, self.onSceneEndClose
+        )
 
         # Buttons
         self.ui.applyButton.connect("clicked(bool)", self.onApplyButton)
@@ -152,7 +165,9 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if self._parameterNode:
             self._parameterNode.disconnectGui(self._parameterNodeGuiTag)
             self._parameterNodeGuiTag = None
-            self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
+            self.removeObserver(
+                self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply
+            )
 
     def onSceneStartClose(self, caller, event) -> None:
         """Called just before the scene is closed."""
@@ -174,12 +189,16 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Select default input nodes if nothing is selected yet to save a few clicks for the user
         if not self._parameterNode.fixedVolume:
-            firstVolumeNode = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
+            firstVolumeNode = slicer.mrmlScene.GetFirstNodeByClass(
+                "vtkMRMLScalarVolumeNode"
+            )
             if firstVolumeNode:
                 self._parameterNode.fixedVolume = firstVolumeNode
                 self._parameterNode.movingVolume = firstVolumeNode
 
-    def setParameterNode(self, inputParameterNode: Optional[ANTsRegistrationParameterNode]) -> None:
+    def setParameterNode(
+        self, inputParameterNode: Optional[ANTsRegistrationParameterNode]
+    ) -> None:
         """
         Set and observe parameter node.
         Observation is needed because when the parameter node is changed then the GUI must be updated immediately.
@@ -187,17 +206,26 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         if self._parameterNode:
             self._parameterNode.disconnectGui(self._parameterNodeGuiTag)
-            self.removeObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
+            self.removeObserver(
+                self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply
+            )
         self._parameterNode = inputParameterNode
         if self._parameterNode:
             # Note: in the .ui file, a Qt dynamic property called "SlicerParameterName" is set on each
             # ui element that needs connection.
             self._parameterNodeGuiTag = self._parameterNode.connectGui(self.ui)
-            self.addObserver(self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply)
+            self.addObserver(
+                self._parameterNode, vtk.vtkCommand.ModifiedEvent, self._checkCanApply
+            )
             self._checkCanApply()
 
     def _checkCanApply(self, caller=None, event=None) -> None:
-        if self._parameterNode and self._parameterNode.fixedVolume and self._parameterNode.movingVolume and self._parameterNode.forwardTransform:
+        if (
+            self._parameterNode
+            and self._parameterNode.fixedVolume
+            and self._parameterNode.movingVolume
+            and self._parameterNode.forwardTransform
+        ):
             self.ui.applyButton.toolTip = _("Compute output volume")
             self.ui.applyButton.enabled = True
         else:
@@ -206,11 +234,17 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onApplyButton(self) -> None:
         """Run processing when user clicks "Apply" button."""
-        with slicer.util.tryWithErrorDisplay(_("Failed to compute results."), waitCursor=True):
+        with slicer.util.tryWithErrorDisplay(
+            _("Failed to compute results."), waitCursor=True
+        ):
             # Compute output
-            self.logic.process(self.ui.fixedSelector.currentNode(), self.ui.movingSelector.currentNode(),
-                               self.ui.outputSelector.currentNode(), self.ui.affineMetricWidget.currentText,
-                               self.ui.samplingRateSliderWidget.value)
+            self.logic.process(
+                self.ui.fixedSelector.currentNode(),
+                self.ui.movingSelector.currentNode(),
+                self.ui.outputSelector.currentNode(),
+                self.ui.affineMetricWidget.currentText,
+                self.ui.samplingRateSliderWidget.value,
+            )
 
 
 #
@@ -235,13 +269,14 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
     def getParameterNode(self):
         return ANTsRegistrationParameterNode(super().getParameterNode())
 
-    def process(self,
-                fixedVolume: vtkMRMLScalarVolumeNode,
-                movingVolume: vtkMRMLScalarVolumeNode,
-                forwardTransform: vtkMRMLTransformNode,
-                metric: str = "Mattes",
-                samplingRate: float = 0.2,
-                ) -> None:
+    def process(
+        self,
+        fixedVolume: vtkMRMLScalarVolumeNode,
+        movingVolume: vtkMRMLScalarVolumeNode,
+        forwardTransform: vtkMRMLTransformNode,
+        metric: str = "Mattes",
+        samplingRate: float = 0.2,
+    ) -> None:
         """
         Run the processing algorithm.
         Can be used without GUI widget.
@@ -256,16 +291,18 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
 
         import time
 
-        logging.info('Instantiating the filter')
+        logging.info("Instantiating the filter")
         itk = self.itk
         fixedImage = slicer.util.itkImageFromVolume(fixedVolume)
-        ants_reg = itk.ANTSRegistration[type(fixedImage), type(fixedImage)].New()  # TODO: update name
+        ants_reg = itk.ANTSRegistration[
+            type(fixedImage), type(fixedImage)
+        ].New()  # TODO: update name
         ants_reg.SetFixedImage(fixedImage)
         movingImage = slicer.util.itkImageFromVolume(movingVolume)
         ants_reg.SetMovingImage(fixedImage)
         ants_reg.SetSamplingRate(samplingRate)
 
-        logging.info('Processing started')
+        logging.info("Processing started")
         startTime = time.time()
         ants_reg.Update()
         outTransform = ants_reg.GetForwardTransform()
@@ -281,7 +318,6 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
 
         stopTime = time.time()
         logging.info(f"Processing completed in {stopTime-startTime:.2f} seconds")
-
 
 
 class ANTsRegistrationTest(ScriptedLoadableModuleTest):
@@ -352,12 +388,14 @@ class ANTsRegistrationTest(ScriptedLoadableModuleTest):
 
         file_sha512 = "27998dfea16be10830384536f021f42f96c3f7095c9e5a1e983a10c37d4eddea514b45f217234eeccf062e9bdd0f811c49698658689e62924f6f96c0173f3176"
         import SampleData
+
         expectedResult = SampleData.downloadFromURL(
-            nodeNames='ANTsRegistrationTestOutput',
-            fileNames='GenerateANTsRegistrationTestOutput.mha',
+            nodeNames="ANTsRegistrationTestOutput",
+            fileNames="GenerateANTsRegistrationTestOutput.mha",
             uris=f"https://data.kitware.com:443/api/v1/file/hashsum/SHA512/{file_sha512}/download",
-            checksums=f'SHA512:{file_sha512}',
-            loadFiles=True)
+            checksums=f"SHA512:{file_sha512}",
+            loadFiles=True,
+        )
 
         itk = logic.itk
         FloatImage = itk.Image[itk.F, 3]
@@ -368,4 +406,4 @@ class ANTsRegistrationTest(ScriptedLoadableModuleTest):
         comparer.Update()
         self.assertEqual(comparer.GetNumberOfPixelsWithDifferences(), 0)
 
-        self.delayDisplay('Test passed')
+        self.delayDisplay("Test passed")

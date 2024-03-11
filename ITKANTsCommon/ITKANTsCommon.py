@@ -4,10 +4,9 @@ import os
 import qt
 import slicer
 from slicer.ScriptedLoadableModule import (
-  ScriptedLoadableModule,
-  ScriptedLoadableModuleLogic,
+    ScriptedLoadableModule,
+    ScriptedLoadableModuleLogic,
 )
-
 
 
 class ITKANTsCommon(ScriptedLoadableModule):
@@ -21,14 +20,15 @@ class ITKANTsCommon(ScriptedLoadableModule):
         self.parent.categories = ["Registration"]
         self.parent.dependencies = []
         self.parent.contributors = ["Dženan Zukić (Kitware Inc.)"]
-        self.parent.helpText = "This is a helper module, which contains commonly used ITK functions."
+        self.parent.helpText = (
+            "This is a helper module, which contains commonly used ITK functions."
+        )
         self.parent.acknowledgementText = """
 This file was originally developed by Dženan Zukić, Kitware Inc.,
 and was partially funded by NIH grant 5R44CA239830.
 """
         # Additional initialization step after application startup is complete
         # slicer.app.connect("startupCompleted()", preloadITK)
-
 
 
 class ITKANTsCommonLogic(ScriptedLoadableModuleLogic):
@@ -51,7 +51,7 @@ class ITKANTsCommonLogic(ScriptedLoadableModuleLogic):
     @property
     def itk(self):
         if self._itk is None:
-            logging.info('Importing itk...')
+            logging.info("Importing itk...")
             self._itk = self.importITK()
         return self._itk
 
@@ -61,24 +61,23 @@ class ITKANTsCommonLogic(ScriptedLoadableModuleLogic):
         except ModuleNotFoundError:
             with slicer.util.WaitCursor(), slicer.util.displayPythonShell():
                 itk = self.installITK(confirmInstallation)
-        logging.info(f'ITK {itk.__version__} imported correctly')
+        logging.info(f"ITK {itk.__version__} imported correctly")
         return itk
-
 
     @staticmethod
     def installITK(confirm=True):
         if confirm and not slicer.app.commandOptions().testingEnabled:
             install = slicer.util.confirmOkCancelDisplay(
-            'ITK will be downloaded and installed now. The process might take a minute.'
+                "ITK will be downloaded and installed now. The process might take a minute."
             )
             if not install:
-                logging.info('Installation of ITK aborted by the user')
+                logging.info("Installation of ITK aborted by the user")
                 return None
-        slicer.util.pip_install('itk-ants>=0.2.0')
+        slicer.util.pip_install("itk-ants>=0.2.0")
         import itk
-        logging.info(f'ITK {itk.__version__} installed correctly')
-        return itk
 
+        logging.info(f"ITK {itk.__version__} installed correctly")
+        return itk
 
 
 def preloadITK():
