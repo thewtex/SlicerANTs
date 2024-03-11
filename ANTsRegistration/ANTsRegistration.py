@@ -895,13 +895,13 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         fixedImage = slicer.util.itkImageFromVolume(
             initialTransformSettings["fixedImageNode"]
         )
-        # TODO: update name (ANTS->ANTs), use precision_type in instantiation
-        ants_reg = itk.ANTSRegistration[type(fixedImage), type(fixedImage)].New()
-        ants_reg.SetFixedImage(fixedImage)
         movingImage = slicer.util.itkImageFromVolume(
             initialTransformSettings["movingImageNode"]
         )
-        ants_reg.SetMovingImage(fixedImage)
+        # TODO: update name (ANTS->ANTs), use precision_type in instantiation
+        ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage)].New()
+        ants_reg.SetFixedImage(fixedImage)
+        ants_reg.SetMovingImage(movingImage)
         assert(fixedImage.ndim == movingImage.ndim)
         assert(fixedImage.ndim == generalSettings["dimensionality"])
         # ants_reg.SetSamplingRate(samplingRate)
