@@ -4,6 +4,7 @@ import json
 import glob
 import time
 from typing import Annotated, Optional
+from dataclasses import dataclass
 
 import vtk, qt, ctk, slicer
 from slicer.i18n import tr as _
@@ -359,7 +360,7 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._updatingGUIFromParameterNode = True
 
         currentStage = int(
-            self._parameterNode.GetParameter(self.logic.CURRENT_STAGE_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.CURRENT_STAGE_PARAM)
         )
         self.ui.stagesTableWidget.view.setCurrentIndex(
             self.ui.stagesTableWidget.model.index(currentStage, 0)
@@ -370,28 +371,28 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.updateStagesGUIFromParameter()
 
         self.ui.outputTransformComboBox.setCurrentNode(
-            self._parameterNode.GetNodeReference(self.logic.OUTPUT_TRANSFORM_REF)
+            self._parameterNode.GetNodeReference(self.logic.params.OUTPUT_TRANSFORM_REF)
         )
         self.ui.outputVolumeComboBox.setCurrentNode(
-            self._parameterNode.GetNodeReference(self.logic.OUTPUT_VOLUME_REF)
+            self._parameterNode.GetNodeReference(self.logic.params.OUTPUT_VOLUME_REF)
         )
         self.ui.outputInterpolationComboBox.currentText = (
-            self._parameterNode.GetParameter(self.logic.OUTPUT_INTERPOLATION_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.OUTPUT_INTERPOLATION_PARAM)
         )
         self.ui.outputDisplacementFieldCheckBox.checked = int(
-            self._parameterNode.GetParameter(self.logic.CREATE_DISPLACEMENT_FIELD_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.CREATE_DISPLACEMENT_FIELD_PARAM)
         )
 
         self.ui.initialTransformTypeComboBox.currentIndex = (
             int(
                 self._parameterNode.GetParameter(
-                    self.logic.INITIALIZATION_FEATURE_PARAM
+                    self.logic.params.INITIALIZATION_FEATURE_PARAM
                 )
             )
             + 2
         )
         self.ui.initialTransformNodeComboBox.setCurrentNode(
-            self._parameterNode.GetNodeReference(self.logic.INITIAL_TRANSFORM_REF)
+            self._parameterNode.GetNodeReference(self.logic.params.INITIAL_TRANSFORM_REF)
             if self.ui.initialTransformTypeComboBox.currentIndex == 1
             else None
         )
@@ -400,18 +401,18 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )
 
         self.ui.dimensionalitySpinBox.value = int(
-            self._parameterNode.GetParameter(self.logic.DIMENSIONALITY_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.DIMENSIONALITY_PARAM)
         )
         self.ui.histogramMatchingCheckBox.checked = int(
-            self._parameterNode.GetParameter(self.logic.HISTOGRAM_MATCHING_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.HISTOGRAM_MATCHING_PARAM)
         )
         winsorizeIntensities = self._parameterNode.GetParameter(
-            self.logic.WINSORIZE_IMAGE_INTENSITIES_PARAM
+            self.logic.params.WINSORIZE_IMAGE_INTENSITIES_PARAM
         ).split(",")
         self.ui.winsorizeRangeWidget.setMinimumValue(float(winsorizeIntensities[0]))
         self.ui.winsorizeRangeWidget.setMaximumValue(float(winsorizeIntensities[1]))
         self.ui.computationPrecisionComboBox.currentText = (
-            self._parameterNode.GetParameter(self.logic.COMPUTATION_PRECISION_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.COMPUTATION_PRECISION_PARAM)
         )
 
         self.ui.runRegistrationButton.enabled = (
@@ -428,7 +429,7 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def updateStagesGUIFromParameter(self):
         stagesList = json.loads(
-            self._parameterNode.GetParameter(self.logic.STAGES_JSON_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.STAGES_JSON_PARAM)
         )
         self.ui.fixedImageNodeComboBox.setCurrentNodeID(
             stagesList[0]["metrics"][0]["fixed"]
@@ -445,7 +446,7 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def setCurrentStagePropertiesGUIFromList(self, stagesList):
         currentStage = int(
-            self._parameterNode.GetParameter(self.logic.CURRENT_STAGE_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.CURRENT_STAGE_PARAM)
         )
         if {"metrics", "levels", "masks"} <= set(stagesList[currentStage].keys()):
             self.ui.metricsTableWidget.setGUIFromParameters(
@@ -475,44 +476,44 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         )  # Modify all properties in a single batch
 
         self._parameterNode.SetParameter(
-            self.logic.CURRENT_STAGE_PARAM,
+            self.logic.params.CURRENT_STAGE_PARAM,
             str(self.ui.stagesTableWidget.getSelectedRow()),
         )
 
         self._parameterNode.SetNodeReferenceID(
-            self.logic.OUTPUT_TRANSFORM_REF,
+            self.logic.params.OUTPUT_TRANSFORM_REF,
             self.ui.outputTransformComboBox.currentNodeID,
         )
         self._parameterNode.SetNodeReferenceID(
-            self.logic.OUTPUT_VOLUME_REF, self.ui.outputVolumeComboBox.currentNodeID
+            self.logic.params.OUTPUT_VOLUME_REF, self.ui.outputVolumeComboBox.currentNodeID
         )
         self._parameterNode.SetParameter(
-            self.logic.OUTPUT_INTERPOLATION_PARAM,
+            self.logic.params.OUTPUT_INTERPOLATION_PARAM,
             self.ui.outputInterpolationComboBox.currentText,
         )
         self._parameterNode.SetParameter(
-            self.logic.CREATE_DISPLACEMENT_FIELD_PARAM,
+            self.logic.params.CREATE_DISPLACEMENT_FIELD_PARAM,
             str(int(self.ui.outputDisplacementFieldCheckBox.checked)),
         )
 
         self._parameterNode.SetParameter(
-            self.logic.INITIALIZATION_FEATURE_PARAM,
+            self.logic.params.INITIALIZATION_FEATURE_PARAM,
             str(self.ui.initialTransformTypeComboBox.currentIndex - 2),
         )
         self._parameterNode.SetNodeReferenceID(
-            self.logic.INITIAL_TRANSFORM_REF,
+            self.logic.params.INITIAL_TRANSFORM_REF,
             self.ui.initialTransformNodeComboBox.currentNodeID,
         )
 
         self._parameterNode.SetParameter(
-            self.logic.DIMENSIONALITY_PARAM, str(self.ui.dimensionalitySpinBox.value)
+            self.logic.params.DIMENSIONALITY_PARAM, str(self.ui.dimensionalitySpinBox.value)
         )
         self._parameterNode.SetParameter(
-            self.logic.HISTOGRAM_MATCHING_PARAM,
+            self.logic.params.HISTOGRAM_MATCHING_PARAM,
             str(int(self.ui.histogramMatchingCheckBox.checked)),
         )
         self._parameterNode.SetParameter(
-            self.logic.WINSORIZE_IMAGE_INTENSITIES_PARAM,
+            self.logic.params.WINSORIZE_IMAGE_INTENSITIES_PARAM,
             ",".join(
                 [
                     str(self.ui.winsorizeRangeWidget.minimumValue),
@@ -521,7 +522,7 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             ),
         )
         self._parameterNode.SetParameter(
-            self.logic.COMPUTATION_PRECISION_PARAM,
+            self.logic.params.COMPUTATION_PRECISION_PARAM,
             self.ui.computationPrecisionComboBox.currentText,
         )
 
@@ -531,7 +532,7 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
             return
         stagesList = json.loads(
-            self._parameterNode.GetParameter(self.logic.STAGES_JSON_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.STAGES_JSON_PARAM)
         )
         for stage in stagesList:
             stage["metrics"][0]["fixed"] = self.ui.fixedImageNodeComboBox.currentNodeID
@@ -539,19 +540,19 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "moving"
             ] = self.ui.movingImageNodeComboBox.currentNodeID
         self._parameterNode.SetParameter(
-            self.logic.STAGES_JSON_PARAM, json.dumps(stagesList)
+            self.logic.params.STAGES_JSON_PARAM, json.dumps(stagesList)
         )
 
     def updateStagesParameterFromGUI(self):
         if self._parameterNode is None or self._updatingGUIFromParameterNode:
             return
         stagesList = json.loads(
-            self._parameterNode.GetParameter(self.logic.STAGES_JSON_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.STAGES_JSON_PARAM)
         )
         self.setStagesTransformsToStagesList(stagesList)
         self.setCurrentStagePropertiesToStagesList(stagesList)
         self._parameterNode.SetParameter(
-            self.logic.STAGES_JSON_PARAM, json.dumps(stagesList)
+            self.logic.params.STAGES_JSON_PARAM, json.dumps(stagesList)
         )
 
     def setStagesTransformsToStagesList(self, stagesList):
@@ -564,7 +565,7 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def setCurrentStagePropertiesToStagesList(self, stagesList):
         currentStage = int(
-            self._parameterNode.GetParameter(self.logic.CURRENT_STAGE_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.CURRENT_STAGE_PARAM)
         )
 
         stagesIterator = (
@@ -600,20 +601,20 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def onRemoveStageButtonClicked(self):
         stagesList = json.loads(
-            self._parameterNode.GetParameter(self.logic.STAGES_JSON_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.STAGES_JSON_PARAM)
         )
         if len(stagesList) == 1:
             return
         currentStage = int(
-            self._parameterNode.GetParameter(self.logic.CURRENT_STAGE_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.CURRENT_STAGE_PARAM)
         )
         stagesList.pop(currentStage)
         wasModified = self._parameterNode.StartModify()  # Modify in a single batch
         self._parameterNode.SetParameter(
-            self.logic.CURRENT_STAGE_PARAM, str(max(currentStage - 1, 0))
+            self.logic.params.CURRENT_STAGE_PARAM, str(max(currentStage - 1, 0))
         )
         self._parameterNode.SetParameter(
-            self.logic.STAGES_JSON_PARAM, json.dumps(stagesList)
+            self.logic.params.STAGES_JSON_PARAM, json.dumps(stagesList)
         )
         self._parameterNode.EndModify(wasModified)
 
@@ -632,14 +633,14 @@ class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 "moving"
             ] = self.ui.movingImageNodeComboBox.currentNodeID
         self._parameterNode.SetParameter(
-            self.logic.STAGES_JSON_PARAM, json.dumps(presetParameters["stages"])
+            self.logic.params.STAGES_JSON_PARAM, json.dumps(presetParameters["stages"])
         )
-        self._parameterNode.SetParameter(self.logic.CURRENT_STAGE_PARAM, "0")
+        self._parameterNode.SetParameter(self.logic.params.CURRENT_STAGE_PARAM, "0")
         self._parameterNode.EndModify(wasModified)
 
     def onSavePresetPushButton(self):
         stages = json.loads(
-            self._parameterNode.GetParameter(self.logic.STAGES_JSON_PARAM)
+            self._parameterNode.GetParameter(self.logic.params.STAGES_JSON_PARAM)
         )
         for stage in stages:
             for metric in stage["metrics"]:
@@ -680,18 +681,20 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
 
-    OUTPUT_TRANSFORM_REF = "OutputTransform"
-    OUTPUT_VOLUME_REF = "OutputVolume"
-    INITIAL_TRANSFORM_REF = "InitialTransform"
-    OUTPUT_INTERPOLATION_PARAM = "OutputInterpolation"
-    STAGES_JSON_PARAM = "StagesJson"
-    CURRENT_STAGE_PARAM = "CurrentStage"
-    CREATE_DISPLACEMENT_FIELD_PARAM = "OutputDisplacementField"
-    INITIALIZATION_FEATURE_PARAM = "initializationFeature"
-    DIMENSIONALITY_PARAM = "Dimensionality"
-    HISTOGRAM_MATCHING_PARAM = "HistogramMatching"
-    WINSORIZE_IMAGE_INTENSITIES_PARAM = "WinsorizeImageIntensities"
-    COMPUTATION_PRECISION_PARAM = "ComputationPrecision"
+    @dataclass
+    class params:
+        OUTPUT_TRANSFORM_REF = "OutputTransform"
+        OUTPUT_VOLUME_REF = "OutputVolume"
+        INITIAL_TRANSFORM_REF = "InitialTransform"
+        OUTPUT_INTERPOLATION_PARAM = "OutputInterpolation"
+        STAGES_JSON_PARAM = "StagesJson"
+        CURRENT_STAGE_PARAM = "CurrentStage"
+        CREATE_DISPLACEMENT_FIELD_PARAM = "OutputDisplacementField"
+        INITIALIZATION_FEATURE_PARAM = "initializationFeature"
+        DIMENSIONALITY_PARAM = "Dimensionality"
+        HISTOGRAM_MATCHING_PARAM = "HistogramMatching"
+        WINSORIZE_IMAGE_INTENSITIES_PARAM = "WinsorizeImageIntensities"
+        COMPUTATION_PRECISION_PARAM = "ComputationPrecision"
 
     def __init__(self):
         """
@@ -731,50 +734,50 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         Initialize parameter node with default settings.
         """
         presetParameters = PresetManager().getPresetParametersByName()
-        if not parameterNode.GetParameter(self.STAGES_JSON_PARAM):
+        if not parameterNode.GetParameter(self.params.STAGES_JSON_PARAM):
             parameterNode.SetParameter(
-                self.STAGES_JSON_PARAM, json.dumps(presetParameters["stages"])
+                self.params.STAGES_JSON_PARAM, json.dumps(presetParameters["stages"])
             )
-        if not parameterNode.GetParameter(self.CURRENT_STAGE_PARAM):
-            parameterNode.SetParameter(self.CURRENT_STAGE_PARAM, "0")
+        if not parameterNode.GetParameter(self.params.CURRENT_STAGE_PARAM):
+            parameterNode.SetParameter(self.params.CURRENT_STAGE_PARAM, "0")
 
-        if not parameterNode.GetNodeReference(self.OUTPUT_TRANSFORM_REF):
-            parameterNode.SetNodeReferenceID(self.OUTPUT_TRANSFORM_REF, "")
-        if not parameterNode.GetNodeReference(self.OUTPUT_VOLUME_REF):
-            parameterNode.SetNodeReferenceID(self.OUTPUT_VOLUME_REF, "")
-        if not parameterNode.GetParameter(self.OUTPUT_INTERPOLATION_PARAM):
+        if not parameterNode.GetNodeReference(self.params.OUTPUT_TRANSFORM_REF):
+            parameterNode.SetNodeReferenceID(self.params.OUTPUT_TRANSFORM_REF, "")
+        if not parameterNode.GetNodeReference(self.params.OUTPUT_VOLUME_REF):
+            parameterNode.SetNodeReferenceID(self.params.OUTPUT_VOLUME_REF, "")
+        if not parameterNode.GetParameter(self.params.OUTPUT_INTERPOLATION_PARAM):
             parameterNode.SetParameter(
-                self.OUTPUT_INTERPOLATION_PARAM,
+                self.params.OUTPUT_INTERPOLATION_PARAM,
                 str(presetParameters["outputSettings"]["interpolation"]),
             )
-        if not parameterNode.GetParameter(self.CREATE_DISPLACEMENT_FIELD_PARAM):
-            parameterNode.SetParameter(self.CREATE_DISPLACEMENT_FIELD_PARAM, "0")
+        if not parameterNode.GetParameter(self.params.CREATE_DISPLACEMENT_FIELD_PARAM):
+            parameterNode.SetParameter(self.params.CREATE_DISPLACEMENT_FIELD_PARAM, "0")
 
-        if not parameterNode.GetParameter(self.INITIALIZATION_FEATURE_PARAM):
+        if not parameterNode.GetParameter(self.params.INITIALIZATION_FEATURE_PARAM):
             parameterNode.SetParameter(
-                self.INITIALIZATION_FEATURE_PARAM,
+                self.params.INITIALIZATION_FEATURE_PARAM,
                 str(
                     presetParameters["initialTransformSettings"][
                         "initializationFeature"
                     ]
                 ),
             )
-        if not parameterNode.GetNodeReference(self.INITIAL_TRANSFORM_REF):
-            parameterNode.SetNodeReferenceID(self.INITIAL_TRANSFORM_REF, "")
+        if not parameterNode.GetNodeReference(self.params.INITIAL_TRANSFORM_REF):
+            parameterNode.SetNodeReferenceID(self.params.INITIAL_TRANSFORM_REF, "")
 
-        if not parameterNode.GetParameter(self.DIMENSIONALITY_PARAM):
+        if not parameterNode.GetParameter(self.params.DIMENSIONALITY_PARAM):
             parameterNode.SetParameter(
-                self.DIMENSIONALITY_PARAM,
+                self.params.DIMENSIONALITY_PARAM,
                 str(presetParameters["generalSettings"]["dimensionality"]),
             )
-        if not parameterNode.GetParameter(self.HISTOGRAM_MATCHING_PARAM):
+        if not parameterNode.GetParameter(self.params.HISTOGRAM_MATCHING_PARAM):
             parameterNode.SetParameter(
-                self.HISTOGRAM_MATCHING_PARAM,
+                self.params.HISTOGRAM_MATCHING_PARAM,
                 str(presetParameters["generalSettings"]["histogramMatching"]),
             )
-        if not parameterNode.GetParameter(self.WINSORIZE_IMAGE_INTENSITIES_PARAM):
+        if not parameterNode.GetParameter(self.params.WINSORIZE_IMAGE_INTENSITIES_PARAM):
             parameterNode.SetParameter(
-                self.WINSORIZE_IMAGE_INTENSITIES_PARAM,
+                self.params.WINSORIZE_IMAGE_INTENSITIES_PARAM,
                 ",".join(
                     [
                         str(x)
@@ -784,16 +787,16 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                     ]
                 ),
             )
-        if not parameterNode.GetParameter(self.COMPUTATION_PRECISION_PARAM):
+        if not parameterNode.GetParameter(self.params.COMPUTATION_PRECISION_PARAM):
             parameterNode.SetParameter(
-                self.COMPUTATION_PRECISION_PARAM,
+                self.params.COMPUTATION_PRECISION_PARAM,
                 presetParameters["generalSettings"]["computationPrecision"],
             )
 
     def createProcessParameters(self, paramNode):
         parameters = {}
         parameters["stages"] = json.loads(
-            paramNode.GetParameter(self.STAGES_JSON_PARAM)
+            paramNode.GetParameter(self.params.STAGES_JSON_PARAM)
         )
 
         # ID to Node
@@ -818,41 +821,41 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
 
         parameters["outputSettings"] = {}
         parameters["outputSettings"]["transform"] = paramNode.GetNodeReference(
-            self.OUTPUT_TRANSFORM_REF
+            self.params.OUTPUT_TRANSFORM_REF
         )
         parameters["outputSettings"]["volume"] = paramNode.GetNodeReference(
-            self.OUTPUT_VOLUME_REF
+            self.params.OUTPUT_VOLUME_REF
         )
         parameters["outputSettings"]["interpolation"] = paramNode.GetParameter(
-            self.OUTPUT_INTERPOLATION_PARAM
+            self.params.OUTPUT_INTERPOLATION_PARAM
         )
         parameters["outputSettings"]["useDisplacementField"] = int(
-            paramNode.GetParameter(self.CREATE_DISPLACEMENT_FIELD_PARAM)
+            paramNode.GetParameter(self.params.CREATE_DISPLACEMENT_FIELD_PARAM)
         )
 
         parameters["initialTransformSettings"] = {}
         parameters["initialTransformSettings"]["initializationFeature"] = int(
-            paramNode.GetParameter(self.INITIALIZATION_FEATURE_PARAM)
+            paramNode.GetParameter(self.params.INITIALIZATION_FEATURE_PARAM)
         )
         parameters["initialTransformSettings"]["initialTransformNode"] = (
-            paramNode.GetNodeReference(self.INITIAL_TRANSFORM_REF)
+            paramNode.GetNodeReference(self.params.INITIAL_TRANSFORM_REF)
         )
 
         parameters["generalSettings"] = {}
         parameters["generalSettings"]["dimensionality"] = int(
-            paramNode.GetParameter(self.DIMENSIONALITY_PARAM)
+            paramNode.GetParameter(self.params.DIMENSIONALITY_PARAM)
         )
         parameters["generalSettings"]["histogramMatching"] = int(
-            paramNode.GetParameter(self.HISTOGRAM_MATCHING_PARAM)
+            paramNode.GetParameter(self.params.HISTOGRAM_MATCHING_PARAM)
         )
         parameters["generalSettings"]["winsorizeImageIntensities"] = [
             float(val)
             for val in paramNode.GetParameter(
-                self.WINSORIZE_IMAGE_INTENSITIES_PARAM
+                self.params.WINSORIZE_IMAGE_INTENSITIES_PARAM
             ).split(",")
         ]
         parameters["generalSettings"]["computationPrecision"] = paramNode.GetParameter(
-            self.COMPUTATION_PRECISION_PARAM
+            self.params.COMPUTATION_PRECISION_PARAM
         )
 
         return parameters
