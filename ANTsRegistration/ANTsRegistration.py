@@ -26,7 +26,7 @@ from slicer import (
     vtkMRMLGridTransformNode,
 )
 
-class ANTSRegistration(ScriptedLoadableModule):
+class ANTsRegistration(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -72,7 +72,7 @@ def registerSampleData():
 
 
 @parameterNodeWrapper
-class ANTSRegistrationParameterNode:
+class ANTsRegistrationParameterNode:
     """
     The parameters needed by module.
 
@@ -93,7 +93,7 @@ class ANTSRegistrationParameterNode:
     samplingRate: Annotated[float, WithinRange(0, 1.0)] = 0.2
 
 
-class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
+class ANTsRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     """Uses ScriptedLoadableModuleWidget base class, available at:
     https://github.com/Slicer/Slicer/blob/main/Base/Python/slicer/ScriptedLoadableModule.py
     """
@@ -112,7 +112,7 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Load widget from .ui file (created by Qt Designer).
         # Additional widgets can be instantiated manually and added to self.layout.
-        uiWidget = slicer.util.loadUI(self.resourcePath("UI/ANTSRegistration.ui"))
+        uiWidget = slicer.util.loadUI(self.resourcePath("UI/ANTsRegistration.ui"))
         self.layout.addWidget(uiWidget)
         self.ui = slicer.util.childWidgetVariables(uiWidget)
 
@@ -123,7 +123,7 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         # Create logic class. Logic implements all computations that should be possible to run
         # in batch mode, without a graphical user interface.
-        self.logic = ANTSRegistrationLogic()
+        self.logic = ANTsRegistrationLogic()
 
         # Connections
 
@@ -179,7 +179,7 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self._parameterNode.fixedVolume = firstVolumeNode
                 self._parameterNode.movingVolume = firstVolumeNode
 
-    def setParameterNode(self, inputParameterNode: Optional[ANTSRegistrationParameterNode]) -> None:
+    def setParameterNode(self, inputParameterNode: Optional[ANTsRegistrationParameterNode]) -> None:
         """
         Set and observe parameter node.
         Observation is needed because when the parameter node is changed then the GUI must be updated immediately.
@@ -214,11 +214,11 @@ class ANTSRegistrationWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
 
 #
-# ANTSRegistrationLogic
+# ANTsRegistrationLogic
 #
 
 
-class ANTSRegistrationLogic(ITKANTsCommonLogic):
+class ANTsRegistrationLogic(ITKANTsCommonLogic):
     """This class should implement all the actual
     computation done by your module.  The interface
     should be such that other python code can import
@@ -233,7 +233,7 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
         ITKANTsCommonLogic.__init__(self)
 
     def getParameterNode(self):
-        return ANTSRegistrationParameterNode(super().getParameterNode())
+        return ANTsRegistrationParameterNode(super().getParameterNode())
 
     def process(self,
                 fixedVolume: vtkMRMLScalarVolumeNode,
@@ -259,7 +259,7 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
         logging.info('Instantiating the filter')
         itk = self.itk
         fixedImage = slicer.util.itkImageFromVolume(fixedVolume)
-        ants_reg = itk.ANTSRegistration[type(fixedImage), type(fixedImage)].New()
+        ants_reg = itk.ANTSRegistration[type(fixedImage), type(fixedImage)].New()  # TODO: update name
         ants_reg.SetFixedImage(fixedImage)
         movingImage = slicer.util.itkImageFromVolume(movingVolume)
         ants_reg.SetMovingImage(fixedImage)
@@ -284,7 +284,7 @@ class ANTSRegistrationLogic(ITKANTsCommonLogic):
 
 
 
-class ANTSRegistrationTest(ScriptedLoadableModuleTest):
+class ANTsRegistrationTest(ScriptedLoadableModuleTest):
     """
     This is the test case for your scripted module.
     Uses ScriptedLoadableModuleTest base class, available at:
@@ -298,9 +298,9 @@ class ANTSRegistrationTest(ScriptedLoadableModuleTest):
     def runTest(self):
         """Run as few or as many tests as needed here."""
         self.setUp()
-        self.test_ANTSRegistration1()
+        self.test_ANTsRegistration1()
 
-    def test_ANTSRegistration1(self):
+    def test_ANTsRegistration1(self):
         """Ideally you should have several levels of tests.  At the lowest level
         tests should exercise the functionality of the logic with different inputs
         (both valid and invalid).  At higher levels your tests should emulate the
@@ -330,7 +330,7 @@ class ANTSRegistrationTest(ScriptedLoadableModuleTest):
 
         # Test the module logic
 
-        logic = ANTSRegistrationLogic()
+        logic = ANTsRegistrationLogic()
 
         # Test algorithm with axis of propagation: 2
         logic.process(fixedVolume, outputVolume, 2)
@@ -353,8 +353,8 @@ class ANTSRegistrationTest(ScriptedLoadableModuleTest):
         file_sha512 = "27998dfea16be10830384536f021f42f96c3f7095c9e5a1e983a10c37d4eddea514b45f217234eeccf062e9bdd0f811c49698658689e62924f6f96c0173f3176"
         import SampleData
         expectedResult = SampleData.downloadFromURL(
-            nodeNames='ANTSRegistrationTestOutput',
-            fileNames='GenerateANTSRegistrationTestOutput.mha',
+            nodeNames='ANTsRegistrationTestOutput',
+            fileNames='GenerateANTsRegistrationTestOutput.mha',
             uris=f"https://data.kitware.com:443/api/v1/file/hashsum/SHA512/{file_sha512}/download",
             checksums=f'SHA512:{file_sha512}',
             loadFiles=True)

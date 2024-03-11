@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-set(MODULE_NAME ANTSRegistration)
+set(MODULE_NAME ANTsRegistration)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS

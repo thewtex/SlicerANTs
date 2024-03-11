@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ANTSRegistration</class>
- <widget class="qMRMLWidget" name="ANTSRegistration">
+ <class>ANTsRegistration</class>
+ <widget class="qMRMLWidget" name="ANTsRegistration">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -446,7 +446,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>ANTSRegistration</sender>
+   <sender>ANTsRegistration</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>fixedSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -462,7 +462,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>ANTSRegistration</sender>
+   <sender>ANTsRegistration</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>outputSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
@@ -478,7 +478,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>ANTSRegistration</sender>
+   <sender>ANTsRegistration</sender>
    <signal>mrmlSceneChanged(vtkMRMLScene*)</signal>
    <receiver>movingSelector</receiver>
    <slot>setMRMLScene(vtkMRMLScene*)</slot>
