@@ -877,6 +877,7 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
             initialTransformSettings = {}
 
         logging.info("Instantiating the filter")
+        slicer.app.processEvents()
         itk = self.itk
         precision_type = itk.F
         if generalSettings["computationPrecision"] == "double":
@@ -899,6 +900,7 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
             print("This initialization is not yet implemented")
             # use itk.CenteredTransformInitializer to construct initial transform
 
+        slicer.app.processEvents()
         startTime = time.time()
         antsCommand = ""
         for stage_index, stage in enumerate(stages):
@@ -915,8 +917,11 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
             # outputSettings["interpolation"]
             # outputSettings["useDisplacementField"]
             logging.info(f"Stage {stage_index} started")
-            
-            ants_reg.SetTypeOfTransform(stage["transformParameters"]["transform"])
+
+            transform_type = stage["transformParameters"]["transform"]
+            if transform_type == "SyN":
+                transform_type = "SyNOnly"
+            ants_reg.SetTypeOfTransform(transform_type)
             transform_settings = stage["transformParameters"]["settings"].split(",")
             ants_reg.SetGradientStep(float(transform_settings[0]))
             # TODO: other parameters depend on the type of transform, see
@@ -951,7 +956,7 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
             # stage["levels"]["smoothingSigmasUnit"]
             # stage["levels"]["convergenceThreshold"]
             
-            if stage["transformParameters"]["transform"] in ["Rigid", "Affine", "CompositeAffine", "Similarity", "Translation"]:
+            if transform_type in ["Rigid", "Affine", "CompositeAffine", "Similarity", "Translation"]:
                 ants_reg.SetAffineMetric(metric_type)
                 # ants_reg.SetAffineIterations(iterations)  # we need newer pip package
             else:
@@ -965,10 +970,12 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                 
             ants_reg.Update()
             initial_itk_transform = ants_reg.GetForwardTransform()
+            slicer.app.processEvents()
             # TODO: update progress bar
             
         outTransform = ants_reg.GetForwardTransform()
         print(outTransform)
+        slicer.app.processEvents()
         # TODO: set this to the output transform node
         # slicer.util.updateTransformMatrixFromArray
         # vtkITKTransformConverter.CreateVTKTransformFromITK()
