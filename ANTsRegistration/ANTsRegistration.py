@@ -981,11 +981,11 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                 ants_reg.SetSynMetric(metric_type)
                 # ants_reg.SetSynIterations(iterations)  # we need newer pip package
 
-            if stage["masks"]["fixed"] != "":
+            if stage["masks"]["fixed"] is not None and stage["masks"]["fixed"] != "":
                 ants_reg.SetFixedImageMask(
                     slicer.util.itkImageFromVolume(stage["masks"]["fixed"])
                 )
-            if stage["masks"]["moving"] != "":
+            if stage["masks"]["moving"] is not None and stage["masks"]["moving"] != "":
                 ants_reg.SetMovingImageMask(
                     slicer.util.itkImageFromVolume(stage["masks"]["moving"])
                 )
