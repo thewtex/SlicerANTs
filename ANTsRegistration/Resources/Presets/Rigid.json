@@ -65,6 +65,6 @@
         "winsorizeImageIntensities": [
             0.005,
             0.995],
-        "computationPrecision": "float"
+        "computationPrecision": "double"
     }
 }
