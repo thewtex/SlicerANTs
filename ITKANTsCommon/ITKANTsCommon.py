@@ -61,6 +61,8 @@ class ITKANTsCommonLogic(ScriptedLoadableModuleLogic):
         except ModuleNotFoundError:
             with slicer.util.WaitCursor(), slicer.util.displayPythonShell():
                 itk = self.installITK(confirmInstallation)
+                if itk is None:
+                    return None
         logging.info(f"ITK {itk.__version__} imported correctly")
         return itk
 
@@ -82,5 +84,5 @@ class ITKANTsCommonLogic(ScriptedLoadableModuleLogic):
 
 def preloadITK():
     logic = ITKANTsCommonLogic()
-    logic.importITK(True)
-    logic.itk.ANTSRegistration  # trigger loading of itk-ants DLL
+    if logic.importITK(True) is not None:
+        logic.itk.ANTSRegistration  # trigger loading of itk-ants DLL
