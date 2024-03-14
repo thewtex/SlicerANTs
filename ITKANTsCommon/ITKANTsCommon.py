@@ -27,6 +27,7 @@ class ITKANTsCommon(ScriptedLoadableModule):
 This file was originally developed by Dženan Zukić, Kitware Inc.,
 and was partially funded by NIH grant 5R44CA239830.
 """
+        self.parent.hidden = True
         # Additional initialization step after application startup is complete
         # slicer.app.connect("startupCompleted()", preloadITK)
 
