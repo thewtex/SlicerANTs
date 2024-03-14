@@ -4,10 +4,18 @@ set(MODULE_NAME ANTsRegistration)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  antsRegistrationLib/__init__.py
+  antsRegistrationLib/util.py
+  antsRegistrationLib/Widgets/__init__.py
+  antsRegistrationLib/Widgets/delegates.py
+  antsRegistrationLib/Widgets/tables.py
   )
 
 set(MODULE_PYTHON_RESOURCES
   Resources/Icons/${MODULE_NAME}.png
+  Resources/Presets/QuickSyN.json
+  Resources/Presets/Rigid.json
+  Resources/Presets/Rigid+Affine.json
   Resources/UI/${MODULE_NAME}.ui
   )
 
