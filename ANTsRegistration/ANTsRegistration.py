@@ -897,10 +897,8 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         fixedImage = slicer.util.itkImageFromVolume(stages[0]["metrics"][0]["fixed"])
         movingImage = slicer.util.itkImageFromVolume(stages[0]["metrics"][0]["moving"])
 
-        # initial_itk_transform = itk.IdentityTransform[precision_type, fixedImage.ndim].New()  # not wrapped for float in 5.3
-        initial_itk_transform = itk.AffineTransform[
-            precision_type, fixedImage.ndim
-        ].New()
+        initial_itk_transform = itk.AffineTransform[precision_type, fixedImage.ndim].New()  # not wrapped for float in 5.3
+        initial_itk_transform.SetIdentity()
         if "initialTransformNode" in initialTransformSettings:
             print("Passing Slicer nodes to ITK filters is not yet implemented")
             # initial_itk_transform = slicer.util.itkTransformFromTransformNode(
@@ -914,8 +912,7 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         startTime = time.time()
         antsCommand = ""
         for stage_index, stage in enumerate(stages):
-            # TODO: update name (ANTS->ANTs), use precision_type in instantiation
-            ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage)].New()
+            ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage), precision_type].New()
             ants_reg.SetFixedImage(fixedImage)
             ants_reg.SetMovingImage(movingImage)
             ants_reg.SetInitialTransform(initial_itk_transform)
