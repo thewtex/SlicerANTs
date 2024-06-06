@@ -959,9 +959,8 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
 
         slicer.app.processEvents()
         startTime = time.time()
+        ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage), precision_type].New()
         for stage_index, stage in enumerate(stages):
-            # todo: check if this can be re-used
-            ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage), precision_type].New()
             ants_reg.SetFixedImage(fixedImage)
             ants_reg.SetMovingImage(movingImage)
             ants_reg.SetInitialTransform(initial_itk_transform)
