@@ -910,7 +910,6 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
 
         slicer.app.processEvents()
         startTime = time.time()
-        antsCommand = ""
         for stage_index, stage in enumerate(stages):
             ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage), precision_type].New()
             ants_reg.SetFixedImage(fixedImage)
@@ -956,8 +955,8 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                 iterations.append(step["convergence"])
                 shrink_factors.append(step["shrinkFactors"])
                 sigmas.append(step["smoothingSigmas"])
-            # ants_reg.SetShrinkFactors(shrink_factors)  # we need newer pip package
-            # ants_reg.SetSmoothingSigmas(sigmas)  # we need newer pip package
+            ants_reg.SetShrinkFactors(shrink_factors)
+            ants_reg.SetSmoothingSigmas(sigmas)
             ants_reg.SetSmoothingInPhysicalUnits(
                 stage["levels"]["smoothingSigmasUnit"] == "mm"
             )
@@ -973,10 +972,10 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
                 "Translation",
             ]:
                 ants_reg.SetAffineMetric(metric_type)
-                # ants_reg.SetAffineIterations(iterations)  # we need newer pip package
+                ants_reg.SetAffineIterations(iterations)
             else:
                 ants_reg.SetSynMetric(metric_type)
-                # ants_reg.SetSynIterations(iterations)  # we need newer pip package
+                ants_reg.SetSynIterations(iterations)
 
             if stage["masks"]["fixed"] is not None and stage["masks"]["fixed"] != "":
                 ants_reg.SetFixedImageMask(
