@@ -27,6 +27,57 @@ from slicer import (
 
 from antsRegistrationLib.Widgets.tables import StagesTable, MetricsTable, LevelsTable
 
+def itkTransformFromTransformNode(transformNode):
+    """Convert the MRML transform node to an ITK transform."""
+    import itk
+
+    if not transformNode:
+        return None
+
+    tempFilePath = os.path.join(
+        slicer.app.temporaryPath,
+        "tempTransform_{0}.h5".format(time.time()),
+    )
+    storageNode = slicer.vtkMRMLTransformStorageNode()
+    storageNode.SetFileName(tempFilePath)
+    storageNode.WriteData(transformNode)
+    itkTransform = itk.transformread(tempFilePath)
+    os.remove(tempFilePath)
+    if len(itkTransform) == 1:
+        itkTransform = itkTransform[0]
+    return itkTransform
+
+def transformNodeFromItkTransform(itkTransform, transformNode=None):
+    """Convert the ITK transform to a MRML transform node."""
+    import itk
+
+    if not transformNode:
+        if isinstance(itkTransform, itk.MatrixOffsetTransformBase):
+            transformNode = slicer.vtkMRMLLinearTransformNode()
+            slicer.mrmlScene.AddNode(transformNode)
+        elif isinstance(itkTransform, itk.BSplineTransform):
+            transformNode = slicer.vtkMRMLBSplineTransformNode()
+            slicer.mrmlScene.AddNode(transformNode)
+        elif isinstance(itkTransform, itk.DisplacementFieldTransform):
+            transformNode = slicer.vtkMRMLGridTransformNode()
+            slicer.mrmlScene.AddNode(transformNode)
+        elif isinstance(itkTransform, itk.CompositeTransform):
+            transformNode = slicer.vtkMRMLTransformNode()
+            slicer.mrmlScene.AddNode(transformNode)
+        else:
+            raise ValueError("Unsupported transform type: {0}".format(type(itkTransform)))
+
+    tempFilePath = os.path.join(
+        slicer.app.temporaryPath,
+        "tempTransform_{0}.h5".format(time.time()),
+    )
+    itk.transformwrite(itkTransform, tempFilePath)
+    storageNode = slicer.vtkMRMLTransformStorageNode()
+    storageNode.SetFileName(tempFilePath)
+    storageNode.ReadData(transformNode, True)
+    os.remove(tempFilePath)
+
+    return transformNode
 
 class ANTsRegistration(ScriptedLoadableModule):
     """Uses ScriptedLoadableModule base class, available at:
@@ -901,9 +952,7 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         initial_itk_transform.SetIdentity()
         if "initialTransformNode" in initialTransformSettings:
             print("Passing Slicer nodes to ITK filters is not yet implemented")
-            # initial_itk_transform = slicer.util.itkTransformFromTransformNode(
-            #     initialTransformSettings["initialTransformNode"])
-            # ants_reg.SetInitialTransform(initial_itk_transform)
+            # initial_itk_transform = itkTransformFromTransformNode(initialTransformSettings["initialTransformNode"])
         elif "initializationFeature" in initialTransformSettings:
             print("This initialization is not yet implemented")
             # use itk.CenteredTransformInitializer to construct initial transform
@@ -911,6 +960,7 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         slicer.app.processEvents()
         startTime = time.time()
         for stage_index, stage in enumerate(stages):
+            # todo: check if this can be re-used
             ants_reg = itk.ANTSRegistration[type(fixedImage), type(movingImage), precision_type].New()
             ants_reg.SetFixedImage(fixedImage)
             ants_reg.SetMovingImage(movingImage)
@@ -994,10 +1044,8 @@ class ANTsRegistrationLogic(ITKANTsCommonLogic):
         outTransform = ants_reg.GetForwardTransform()
         print(outTransform)
         slicer.app.processEvents()
-        # TODO: set this to the output transform node
-        # slicer.util.updateTransformMatrixFromArray
-        # vtkITKTransformConverter.CreateVTKTransformFromITK()
-        # slicer.util.updateTransformFromITKTransform(outTransform, forwardTransform)
+        if outputSettings["transform"] is not None:
+            transformNodeFromItkTransform(outTransform, outputSettings["transform"])
 
         if outputSettings["volume"] is not None:
             itkImage = ants_reg.GetWarpedMovingImage()
@@ -1095,6 +1143,8 @@ class ANTsRegistrationTest(ScriptedLoadableModuleTest):
         fixed = sampleDataLogic.downloadMRBrainTumor1()
         moving = sampleDataLogic.downloadMRBrainTumor2()
 
+        initialTransform = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLinearTransformNode")
+        outputTransform = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTransformNode")
         outputVolume = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLScalarVolumeNode")
 
         logic = ANTsRegistrationLogic()
@@ -1109,6 +1159,8 @@ class ANTsRegistrationTest(ScriptedLoadableModuleTest):
             stage["levels"]["convergenceThreshold"] = 1
             stage["levels"]["convergenceWindowSize"] = 5
 
+        presetParameters["initialTransformSettings"]["initialTransformNode"] = initialTransform
+        presetParameters["outputSettings"]["transform"] = outputTransform
         presetParameters["outputSettings"]["volume"] = outputVolume
         presetParameters["outputSettings"]["transform"] = None
         presetParameters["outputSettings"]["log"] = None
